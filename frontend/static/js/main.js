@@ -90,6 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <span><strong>Restaurante:</strong> ${item.restaurantName ?? "N/D"}</span>
         <span><strong>Disponible:</strong> ${item.product?.available ? "Sí" : "No"}</span>
         <span><strong>Precio:</strong> S/${Number(item.product?.price?.amount ?? 0).toFixed(2)}</span>
+        <span><strong>Score:</strong> ${Number(item.score ?? 0).toFixed(4)}</span>
       `;
       li.appendChild(meta);
 

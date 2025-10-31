@@ -30,13 +30,13 @@ def build_filter_clause(
     conditions: List[Dict[str, Any]] = []
 
     if available is not None:
-        conditions.append({"equals": {"path": "product.available", "value": available}})
+        conditions.append({"product.available": available})
 
     if max_price is not None:
-        conditions.append({"range": {"path": "product.price.amount", "lt": max_price}})
+        conditions.append({"product.price.amount": {"$lt": max_price}})
 
     if restaurant:
-        conditions.append({"equals": {"path": "restaurantName", "value": restaurant}})
+        conditions.append({"restaurantName": restaurant})
 
     if not conditions:
         return {}
@@ -44,7 +44,7 @@ def build_filter_clause(
     if len(conditions) == 1:
         return {"filter": conditions[0]}
 
-    return {"filter": {"compound": {"must": conditions}}}
+    return {"filter": {"$and": conditions}}
 
 
 def sanitize_result(document: Dict[str, Any]) -> Dict[str, Any]:
