@@ -20,10 +20,13 @@
         </div>
 
         <div class="filter-group">
-          <label for="priceRange">Precio (S/)</label>
+          <div class="label-row">
+            <label for="priceRange">Precio máximo (S/)</label>
+            <button type="button" id="togglePrice" class="secondary-btn">Habilitar</button>
+          </div>
           <div class="slider-wrapper">
-            <input type="range" id="priceRange" min="1" max="20" value="10" />
-            <span id="priceValue">10</span>
+            <input type="range" id="priceRange" min="1" max="20" value="10" disabled />
+            <span id="priceValue">--</span>
           </div>
         </div>
 
@@ -44,10 +47,16 @@
               id="descriptionInput"
               placeholder="Escribe una descripción..."
               autocomplete="off"
+              required
             />
             <button type="submit">Buscar</button>
           </div>
         </form>
+      </section>
+
+      <section id="results" class="results hidden">
+        <h2>Resultados</h2>
+        <ul id="resultsList"></ul>
       </section>
     </div>
 

@@ -20,3 +20,8 @@ python local-test.py "nuggets para desayuno" --k 5 --filter-available true --max
 
 # Ejecutar la aplicación web
 python app.py
+
+La interfaz web permite:
+- Autocompletar el listado de restaurantes disponibles desde la colección `product_detail`.
+- Activar filtros opcionales de disponibilidad, restaurante y precio máximo (habilitando el slider).
+- Enviar una búsqueda semántica que consulta el índice vectorial y devuelve hasta 5 resultados relevantes.
