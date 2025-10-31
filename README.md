@@ -1,31 +1,33 @@
-# DUMP
+# Instrucciones
+
+## DUMP
 En la carpeta `/dump` se encuentra un mongodump de la base de datos. De forma que si usamos VoyageAI no tendríamos que generar los vectores de nuevo.
 
-# `.env`
+## `.env`
 Crear un archivo `.env` copiando el archivo `env.sample` y rellenar las variables necesarias.
 
-# Lanzar el enviroment 
+## Lanzar el enviroment 
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# Cargar el seed (NO NECESARIO SI SE HIZO UN MONGORESTORE)
+## Cargar el seed (NO NECESARIO SI SE HIZO UN MONGORESTORE)
 python seed.py --drop --count 1000 
 
-# Aplanar la matriz para preparar los datos que se van a consultar. (NO NECESARIO SI SE HIZO UN MONGORESTORE)
+## Aplanar la matriz para preparar los datos que se van a consultar. (NO NECESARIO SI SE HIZO UN MONGORESTORE)
 python transform-seed.py --drop-target
 
-# Cargar los embeddings (NO NECESARIO SI SE HIZO UN MONGORESTORE)
+## Cargar los embeddings (NO NECESARIO SI SE HIZO UN MONGORESTORE)
 python embed.py --skip-existing
 
-# Crear el índices
+## Crear el índices
 python indexes.py --replace --num-dimensions 1024
 > Nota: el script crea/reemplaza tanto el índice vectorial como el índice de búsqueda de texto completo.
 
-# Probar el índice 
+## Probar el índice 
 python local-test.py "nuggets para desayuno" --k 5 --filter-available true --max-price 8
 
-# Ejecutar la aplicación web
+## Ejecutar la aplicación web
 python app.py
 
 La interfaz web permite:
