@@ -8,7 +8,7 @@ from pymongo.errors import OperationFailure
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Create a MongoDB vector search index for product description embeddings.")
+    parser = argparse.ArgumentParser(description="Create MongoDB search & vector indexes for the product detail collection.")
     parser.add_argument(
         "--num-dimensions",
         type=int,
@@ -47,8 +47,8 @@ def load_settings() -> Dict[str, str]:
     return {"mongo_uri": mongo_uri, "db_name": db_name, "collection_name": collection_name}
 
 
-def build_index_definition(name: str, num_dimensions: int, similarity: str) -> Dict[str, Any]:
-    return {
+def build_index_definitions(name: str, num_dimensions: int, similarity: str) -> list[Dict[str, Any]]:
+    vector_index = {
         "name": name,
         "type": "vectorSearch",
         "definition": {
@@ -66,6 +66,23 @@ def build_index_definition(name: str, num_dimensions: int, similarity: str) -> D
         },
     }
 
+    full_text_index = {
+        "name": "full-text-search",
+        "type": "search",
+        "definition": {
+            "mappings": {
+                "dynamic": False,
+                "fields": {
+                    "title": {
+                        "type": "string",
+                    }
+                },
+            }
+        },
+    }
+
+    return [vector_index, full_text_index]
+
 
 def main() -> None:
     args = parse_args()
@@ -75,24 +92,27 @@ def main() -> None:
     if num_dimensions <= 0:
         raise ValueError("numDimensions must be a positive integer.")
 
-    index_definition = build_index_definition(args.name, num_dimensions, args.similarity)
+    index_definitions = build_index_definitions(args.name, num_dimensions, args.similarity)
 
     client = MongoClient(settings["mongo_uri"])
     try:
         collection = client[settings["db_name"]][settings["collection_name"]]
 
-        if args.replace:
-            try:
-                collection.drop_search_index(args.name)
-                print(f"[INFO] Dropped existing index '{args.name}'.")
-            except OperationFailure as exc:
-                if "index not found" in str(exc).lower():
-                    print(f"[INFO] No existing index named '{args.name}' to drop.")
-                else:
-                    raise
+        for definition in index_definitions:
+            index_name = definition["name"]
 
-        result = collection.create_search_index(index_definition)
-        print(f"[OK] Created vector search index '{args.name}'. Response: {result}")
+            if args.replace:
+                try:
+                    collection.drop_search_index(index_name)
+                    print(f"[INFO] Dropped existing index '{index_name}'.")
+                except OperationFailure as exc:
+                    if exc.code == 27 or "index not found" in str(exc).lower():
+                        print(f"[INFO] No existing index named '{index_name}' to drop.")
+                    else:
+                        raise
+
+            result = collection.create_search_index(definition)
+            print(f"[OK] Created search index '{index_name}'. Response: {result}")
     finally:
         client.close()
 

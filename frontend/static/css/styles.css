@@ -139,6 +139,30 @@ input[type="range"]:focus {
   cursor: not-allowed;
 }
 
+.toggle-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.toggle-label {
+  font-weight: 600;
+  color: #1f2933;
+}
+
+.toggle-options {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.toggle-option {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 500;
+  color: #425466;
+}
+
 input[type="range"]:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -161,6 +185,12 @@ input[type="range"]:disabled {
   margin-bottom: 1rem;
   font-size: 1.2rem;
   color: #1a2a5a;
+}
+
+.result-title {
+  margin: 0;
+  font-weight: 600;
+  color: #3f4c5a;
 }
 
 .results ul {

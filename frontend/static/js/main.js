@@ -5,7 +5,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const togglePriceButton = document.getElementById("togglePrice");
   const restaurantSelect = document.getElementById("restaurantSelect");
   const searchForm = document.getElementById("searchForm");
+  const titleInput = document.getElementById("titleInput");
   const descriptionInput = document.getElementById("descriptionInput");
+  const searchModeRadios = document.querySelectorAll('input[name="searchMode"]');
   const resultsSection = document.getElementById("results");
   const resultsList = document.getElementById("resultsList");
 
@@ -55,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  const renderResults = (items, message) => {
+  const renderResults = (items, mode, message) => {
     if (!resultsSection || !resultsList) {
       return;
     }
@@ -75,8 +77,15 @@ document.addEventListener("DOMContentLoaded", () => {
       li.classList.add("result-item");
 
       const title = document.createElement("h3");
-      title.textContent = item.product?.name ?? "Producto sin nombre";
+      title.textContent = item.product?.name ?? item.title ?? "Producto sin nombre";
       li.appendChild(title);
+
+      if (item.title) {
+        const titleHighlight = document.createElement("p");
+        titleHighlight.classList.add("result-title");
+        titleHighlight.textContent = `Título: ${item.title}`;
+        li.appendChild(titleHighlight);
+      }
 
       if (item.product?.description) {
         const description = document.createElement("p");
@@ -86,12 +95,42 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const meta = document.createElement("div");
       meta.classList.add("result-meta");
-      meta.innerHTML = `
-        <span><strong>Restaurante:</strong> ${item.restaurantName ?? "N/D"}</span>
-        <span><strong>Disponible:</strong> ${item.product?.available ? "Sí" : "No"}</span>
-        <span><strong>Precio:</strong> S/${Number(item.product?.price?.amount ?? 0).toFixed(2)}</span>
-        <span><strong>Score:</strong> ${Number(item.score ?? 0).toFixed(4)}</span>
-      `;
+      const baseMeta = [
+        `<span><strong>Restaurante:</strong> ${item.restaurantName ?? "N/D"}</span>`,
+        `<span><strong>Disponible:</strong> ${item.product?.available ? "Sí" : "No"}</span>`,
+        `<span><strong>Precio:</strong> S/${Number(item.product?.price?.amount ?? 0).toFixed(2)}</span>`,
+      ];
+
+      if (mode === "fulltext" && item.scoreDetails) {
+        const fusionScore =
+          (item.scoreDetails?.fusion && item.scoreDetails.fusion.score) ?? null;
+        const vectorScore =
+          (item.scoreDetails?.vectorPipeline && item.scoreDetails.vectorPipeline.score) ?? null;
+        const textScore =
+          (item.scoreDetails?.fullTextPipeline && item.scoreDetails.fullTextPipeline.score) ?? null;
+
+        baseMeta.push(
+          `<span><strong>Score combinado:</strong> ${
+            fusionScore !== null ? Number(fusionScore).toFixed(4) : "N/D"
+          }</span>`
+        );
+        baseMeta.push(
+          `<span><strong>Score vector:</strong> ${
+            vectorScore !== null ? Number(vectorScore).toFixed(4) : "N/D"
+          }</span>`
+        );
+        baseMeta.push(
+          `<span><strong>Score texto:</strong> ${
+            textScore !== null ? Number(textScore).toFixed(4) : "N/D"
+          }</span>`
+        );
+      } else if (typeof item.score === "number") {
+        baseMeta.push(
+          `<span><strong>Score vector:</strong> ${Number(item.score).toFixed(4)}</span>`
+        );
+      }
+
+      meta.innerHTML = baseMeta.join("");
       li.appendChild(meta);
 
       resultsList.appendChild(li);
@@ -104,10 +143,30 @@ document.addEventListener("DOMContentLoaded", () => {
     searchForm.addEventListener("submit", (event) => {
       event.preventDefault();
 
+      const selectedMode =
+        Array.from(searchModeRadios).find((radio) => radio.checked)?.value ?? "vector";
+      const descriptionValue = (descriptionInput?.value ?? "").trim();
+      const titleValue = (titleInput?.value ?? "").trim();
+
+      if (!descriptionValue) {
+        alert("La descripción es obligatoria.");
+        return;
+      }
+
+      if (selectedMode === "fulltext" && !titleValue) {
+        alert("El título es obligatorio para la búsqueda full text.");
+        return;
+      }
+
       const payload = {
-        query: descriptionInput?.value ?? "",
+        mode: selectedMode,
+        description: descriptionValue,
         limit: 5,
       };
+
+      if (selectedMode === "fulltext") {
+        payload.title = titleValue;
+      }
 
       if (availableCheckbox?.checked) {
         payload.available = true;
@@ -137,11 +196,11 @@ document.addEventListener("DOMContentLoaded", () => {
           return response.json();
         })
         .then((data) => {
-          renderResults(data.results ?? []);
+          renderResults(data.results ?? [], data.mode ?? selectedMode);
         })
         .catch((error) => {
           console.error(error);
-          renderResults([], error.message);
+          renderResults([], selectedMode, error.message);
         });
     });
   }

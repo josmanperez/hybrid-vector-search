@@ -14,6 +14,7 @@ python embed.py --skip-existing
 
 # Crear el índices
 python indexes.py --replace --num-dimensions 1024
+> Nota: el script crea/reemplaza tanto el índice vectorial como el índice de búsqueda de texto completo.
 
 # Probar el índice 
 python local-test.py "nuggets para desayuno" --k 5 --filter-available true --max-price 8

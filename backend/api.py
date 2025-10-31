@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+import json
+from typing import Any, Dict, List, Optional, Tuple
 
-from bson import ObjectId
+from bson import ObjectId, json_util
 from flask import Blueprint, current_app, jsonify, request
 
 from .db import get_collection
@@ -24,9 +25,9 @@ def extract_embeddings(response) -> List[List[float]]:
     return vectors
 
 
-def build_filter_clause(
+def build_filter_components(
     available: Optional[bool], max_price: Optional[float], restaurant: Optional[str]
-) -> Dict[str, Any]:
+) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
     conditions: List[Dict[str, Any]] = []
 
     if available is not None:
@@ -39,12 +40,13 @@ def build_filter_clause(
         conditions.append({"restaurantName": restaurant})
 
     if not conditions:
-        return {}
+        return None, None
 
     if len(conditions) == 1:
-        return {"filter": conditions[0]}
+        return conditions[0], conditions[0]
 
-    return {"filter": {"$and": conditions}}
+    combined = {"$and": conditions}
+    return combined, combined
 
 
 def sanitize_result(document: Dict[str, Any]) -> Dict[str, Any]:
@@ -72,6 +74,9 @@ def sanitize_result(document: Dict[str, Any]) -> Dict[str, Any]:
                 pass
         result["product"] = product_copy
 
+    if "scoreDetails" in result:
+        result["scoreDetails"] = json.loads(json_util.dumps(result["scoreDetails"]))
+
     return result
 
 
@@ -90,9 +95,12 @@ def list_restaurants():
 @api_bp.route("/search", methods=["POST"])
 def search_products():
     payload = request.get_json(silent=True) or {}
-    query = (payload.get("query") or "").strip()
+    mode = (payload.get("mode") or "vector").lower()
+    if mode not in {"vector", "fulltext"}:
+        return jsonify({"message": "Modo de búsqueda no válido."}), 400
 
-    if not query:
+    description = (payload.get("description") or "").strip()
+    if not description:
         return jsonify({"message": "La descripción es obligatoria."}), 400
 
     try:
@@ -123,19 +131,19 @@ def search_products():
     text_model = current_app.config.get("VOYAGE_TEXT_MODEL", "voyage-3.5")
 
     try:
-        embedding_response = voyage_client.embed(texts=[query], model=text_model)
+        embedding_response = voyage_client.embed(texts=[description], model=text_model)
         vectors = extract_embeddings(embedding_response)
         query_vector = vectors[0]
     except Exception as exc:  # pylint: disable=broad-except
         return jsonify({"message": f"No fue posible generar el embedding: {exc}"}), 500
 
-    index_name = current_app.config.get("VECTOR_INDEX_NAME") or current_app.config.get("ATLAS_SEARCH_INDEX")
-    if not index_name:
-        return jsonify({"message": "No hay un índice de vector search configurado."}), 500
+    vector_index = current_app.config.get("VECTOR_INDEX_NAME") or current_app.config.get("ATLAS_SEARCH_INDEX")
+    if not vector_index:
+        return jsonify({"message": "No hay un índice vectorial configurado."}), 500
 
     vector_stage: Dict[str, Any] = {
         "$vectorSearch": {
-            "index": index_name,
+            "index": vector_index,
             "path": "emb_description",
             "queryVector": query_vector,
             "limit": limit,
@@ -143,27 +151,82 @@ def search_products():
         }
     }
 
-    filter_clause = build_filter_clause(available, max_price, restaurant)
-    if filter_clause:
-        vector_stage["$vectorSearch"].update(filter_clause)
-
-    pipeline = [
-        vector_stage,
-        {
-            "$project": {
-                "_id": 1,
-                "restaurantName": 1,
-                "product": 1,
-                "score": {"$meta": "vectorSearchScore"},
-            }
-        },
-    ]
+    filter_doc, match_clause = build_filter_components(available, max_price, restaurant)
+    if filter_doc:
+        vector_stage["$vectorSearch"]["filter"] = filter_doc
 
     collection = get_collection()
+
+    if mode == "vector":
+        pipeline: List[Dict[str, Any]] = [
+            vector_stage,
+            {
+                "$project": {
+                    "_id": 1,
+                    "restaurantName": 1,
+                    "product": 1,
+                    "title": 1,
+                    "score": {"$meta": "vectorSearchScore"},
+                }
+            },
+            {"$limit": limit},
+        ]
+    else:
+        title_query = (payload.get("title") or "").strip()
+        if not title_query:
+            return jsonify({"message": "El título es obligatorio para la búsqueda full text."}), 400
+
+        text_index = current_app.config.get("FULL_TEXT_INDEX_NAME", "full-text-search")
+
+        rank_fusion_stage: Dict[str, Any] = {
+            "$rankFusion": {
+                "input": {
+                    "pipelines": {
+                        "vectorPipeline": [vector_stage],
+                        "fullTextPipeline": [
+                            {
+                                "$search": {
+                                    "index": text_index,
+                                    "phrase": {"query": title_query, "path": "title"},
+                                }
+                            },
+                            {"$limit": limit},
+                        ],
+                    }
+                },
+                "combination": {
+                    "weights": {
+                        "vectorPipeline": 0.5,
+                        "fullTextPipeline": 0.5,
+                    }
+                },
+                "scoreDetails": True,
+            }
+        }
+
+        pipeline = [rank_fusion_stage]
+        if match_clause:
+            pipeline.append({"$match": match_clause})
+        pipeline.extend(
+            [
+                {
+                    "$project": {
+                        "_id": 1,
+                        "restaurantName": 1,
+                        "product": 1,
+                        "title": 1,
+                        "scoreDetails": {"$meta": "scoreDetails"},
+                    }
+                },
+                {"$limit": limit},
+            ]
+        )
+        print(pipeline)
+
     try:
         cursor = collection.aggregate(pipeline)
         results = [sanitize_result(doc) for doc in cursor]
     except Exception as exc:  # pylint: disable=broad-except
         return jsonify({"message": f"No fue posible ejecutar la búsqueda: {exc}"}), 500
 
-    return jsonify({"results": results})
+    return jsonify({"mode": mode, "results": results})

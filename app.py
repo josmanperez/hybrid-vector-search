@@ -25,6 +25,7 @@ def create_app() -> Flask:
     app.config["VOYAGE_TEXT_MODEL"] = os.getenv("VOYAGE_TEXT_MODEL", "voyage-3.5")
     app.config["VECTOR_INDEX_NAME"] = os.getenv("VECTOR_INDEX_NAME") or os.getenv("ATLAS_SEARCH_INDEX")
     app.config["ATLAS_SEARCH_INDEX"] = os.getenv("ATLAS_SEARCH_INDEX")
+    app.config["FULL_TEXT_INDEX_NAME"] = os.getenv("FULL_TEXT_INDEX_NAME", "full-text-search")
 
     app.register_blueprint(api_bp)
     app.teardown_appcontext(close_db)

@@ -40,6 +40,28 @@
 
       <section class="search">
         <form id="searchForm">
+          <label for="titleInput">Título (texto completo)</label>
+          <input
+            type="text"
+            id="titleInput"
+            placeholder="Escribe un título para búsqueda full-text..."
+            autocomplete="off"
+          />
+
+          <div class="toggle-group">
+            <span class="toggle-label">Modo de búsqueda</span>
+            <div class="toggle-options">
+              <label class="toggle-option">
+                <input type="radio" name="searchMode" value="vector" checked />
+                Vector
+              </label>
+              <label class="toggle-option">
+                <input type="radio" name="searchMode" value="fulltext" />
+                Full Text (Rank Fusion)
+              </label>
+            </div>
+          </div>
+
           <label for="descriptionInput">Descripción</label>
           <div class="search-bar">
             <input
