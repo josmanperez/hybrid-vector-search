@@ -25,7 +25,8 @@ python app.py
 La interfaz web permite:
 - Autocompletar el listado de restaurantes disponibles desde la colección `product_detail`.
 - Activar filtros opcionales de disponibilidad, restaurante y precio máximo (habilitando el slider).
-- Enviar una búsqueda semántica que consulta el índice vectorial y devuelve hasta 5 resultados relevantes.
+- Elegir entre búsqueda vectorial, híbrida (rank fusion) o full text directa sobre el campo `title`.
+- Enviar una búsqueda semántica que devuelve hasta 5 resultados relevantes según el modo seleccionado.
 
 ## Registro de operaciones
 - Cada script registra sus acciones en `logs/log-<timestamp>.log` (ruta configurable con `LOG_DIR`).

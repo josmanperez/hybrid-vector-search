@@ -101,7 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
         `<span><strong>Precio:</strong> S/${Number(item.product?.price?.amount ?? 0).toFixed(2)}</span>`,
       ];
 
-      if (mode === "fulltext" && item.scoreDetails) {
+      if (mode === "hybrid" && item.scoreDetails) {
         const fusionScore =
           (item.scoreDetails?.fusion && item.scoreDetails.fusion.score) ?? null;
         const vectorScore =
@@ -123,6 +123,10 @@ document.addEventListener("DOMContentLoaded", () => {
           `<span><strong>Score texto:</strong> ${
             textScore !== null ? Number(textScore).toFixed(4) : "N/D"
           }</span>`
+        );
+      } else if (mode === "fulltext" && typeof item.score === "number") {
+        baseMeta.push(
+          `<span><strong>Score texto:</strong> ${Number(item.score).toFixed(4)}</span>`
         );
       } else if (typeof item.score === "number") {
         baseMeta.push(
@@ -148,8 +152,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const descriptionValue = (descriptionInput?.value ?? "").trim();
       const titleValue = (titleInput?.value ?? "").trim();
 
-      if (!descriptionValue) {
-        alert("La descripción es obligatoria.");
+      if (selectedMode !== "fulltext" && !descriptionValue) {
+        alert("La descripción es obligatoria para la búsqueda vectorial o híbrida.");
         return;
       }
 
@@ -160,11 +164,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const payload = {
         mode: selectedMode,
-        description: descriptionValue,
         limit: 5,
       };
 
-      if (selectedMode === "fulltext") {
+      if (selectedMode === "vector" || selectedMode === "hybrid") {
+        payload.description = descriptionValue;
+      }
+      if (selectedMode !== "vector") {
         payload.title = titleValue;
       }
 
