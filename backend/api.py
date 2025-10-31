@@ -205,33 +205,36 @@ def search_products():
             return jsonify({"message": "No se pudo preparar la búsqueda híbrida."}), 500
 
         text_index = current_app.config.get("FULL_TEXT_INDEX_NAME", "full-text-search")
-        rank_fusion_stage: Dict[str, Any] = {
-            "$rankFusion": {
+        score_fusion_stage: Dict[str, Any] = {
+            "$scoreFusion": {
                 "input": {
                     "pipelines": {
-                        "vectorPipeline": [vector_stage],
-                        "fullTextPipeline": [
+                        "searchOne": [vector_stage],
+                        "searchTwo": [
                             {
                                 "$search": {
                                     "index": text_index,
-                                    "phrase": {"query": title_value, "path": "title"},
+                                    "text": {"query": title_value, "path": "title"},
                                 }
-                            },
-                            {"$limit": limit},
+                            }
                         ],
-                    }
+                    },
+                    "normalization": "sigmoid",
                 },
                 "combination": {
-                    "weights": {
-                        "vectorPipeline": 0.5,
-                        "fullTextPipeline": 0.5,
-                    }
+                    "method": "expression",
+                    "expression": {
+                        "$sum": [
+                            {"$multiply": ["$$searchOne", 10]},
+                            "$$searchTwo",
+                        ]
+                    },
                 },
                 "scoreDetails": True,
             }
         }
 
-        pipeline = [rank_fusion_stage]
+        pipeline = [score_fusion_stage]
         if match_clause:
             pipeline.append({"$match": match_clause})
         pipeline.extend(
@@ -248,7 +251,7 @@ def search_products():
                 {"$limit": limit},
             ]
         )
-        logger.info("Executing rank fusion pipeline: %s", pipeline)
+        logger.info("Executing score fusion pipeline: %s", pipeline)
     else:  # fulltext simple
         text_index = current_app.config.get("FULL_TEXT_INDEX_NAME", "full-text-search")
         pipeline = [

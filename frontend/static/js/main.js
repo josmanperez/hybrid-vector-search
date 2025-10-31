@@ -102,16 +102,41 @@ document.addEventListener("DOMContentLoaded", () => {
       ];
 
       if (mode === "hybrid" && item.scoreDetails) {
-        const fusionScore =
-          (item.scoreDetails?.fusion && item.scoreDetails.fusion.score) ?? null;
+        const details = Array.isArray(item.scoreDetails.details)
+          ? item.scoreDetails.details
+          : [];
+        const findDetail = (name) =>
+          details.find(
+            (detail) =>
+              typeof detail.inputPipelineName === "string" &&
+              detail.inputPipelineName.toLowerCase() === name.toLowerCase(),
+          );
+
+        const combinedScore =
+          typeof item.scoreDetails.value === "number"
+            ? item.scoreDetails.value
+            : null;
+
+        const vectorDetail = findDetail("searchOne");
+        const textDetail = findDetail("searchTwo");
+
         const vectorScore =
-          (item.scoreDetails?.vectorPipeline && item.scoreDetails.vectorPipeline.score) ?? null;
+          typeof vectorDetail?.value === "number"
+            ? vectorDetail.value
+            : typeof vectorDetail?.inputPipelineRawScore === "number"
+              ? vectorDetail.inputPipelineRawScore
+              : null;
+
         const textScore =
-          (item.scoreDetails?.fullTextPipeline && item.scoreDetails.fullTextPipeline.score) ?? null;
+          typeof textDetail?.value === "number"
+            ? textDetail.value
+            : typeof textDetail?.inputPipelineRawScore === "number"
+              ? textDetail.inputPipelineRawScore
+              : null;
 
         baseMeta.push(
           `<span><strong>Score combinado:</strong> ${
-            fusionScore !== null ? Number(fusionScore).toFixed(4) : "N/D"
+            combinedScore !== null ? Number(combinedScore).toFixed(4) : "N/D"
           }</span>`
         );
         baseMeta.push(
