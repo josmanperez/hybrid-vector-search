@@ -278,6 +278,7 @@ def search_products():
         logger.info("Executing full-text pipeline: %s", pipeline)
 
     try:
+        print(pipeline)
         cursor = collection.aggregate(pipeline)
         results = [sanitize_result(doc) for doc in cursor]
     except Exception as exc:  # pylint: disable=broad-except
