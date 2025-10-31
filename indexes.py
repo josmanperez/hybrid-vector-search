@@ -6,6 +6,10 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 
+from utils.logger import get_logger
+
+# Initialize module-level logger.
+logger = get_logger("indexes")
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Create MongoDB search & vector indexes for the product detail collection.")
@@ -104,15 +108,15 @@ def main() -> None:
             if args.replace:
                 try:
                     collection.drop_search_index(index_name)
-                    print(f"[INFO] Dropped existing index '{index_name}'.")
+                    logger.info("Dropped existing index '%s'.", index_name)
                 except OperationFailure as exc:
                     if exc.code == 27 or "index not found" in str(exc).lower():
-                        print(f"[INFO] No existing index named '{index_name}' to drop.")
+                        logger.info("No existing index named '%s' to drop.", index_name)
                     else:
                         raise
 
             result = collection.create_search_index(definition)
-            print(f"[OK] Created search index '{index_name}'. Response: {result}")
+            logger.info("Created search index '%s'. Response: %s", index_name, result)
     finally:
         client.close()
 

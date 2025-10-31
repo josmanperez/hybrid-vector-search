@@ -8,6 +8,7 @@ from flask import Flask, render_template
 from backend.api import api_bp
 from backend.db import close_db
 from backend.voyage import close_client
+from utils.logger import get_logger
 
 
 def create_app() -> Flask:
@@ -26,6 +27,15 @@ def create_app() -> Flask:
     app.config["VECTOR_INDEX_NAME"] = os.getenv("VECTOR_INDEX_NAME") or os.getenv("ATLAS_SEARCH_INDEX")
     app.config["ATLAS_SEARCH_INDEX"] = os.getenv("ATLAS_SEARCH_INDEX")
     app.config["FULL_TEXT_INDEX_NAME"] = os.getenv("FULL_TEXT_INDEX_NAME", "full-text-search")
+    app.config["LOG_DIR"] = os.getenv("LOG_DIR", "logs")
+
+    logger = get_logger("app")
+    app.logger.handlers = []
+    for handler in logger.handlers:
+        app.logger.addHandler(handler)
+    app.logger.setLevel(logger.level)
+    app.logger.propagate = False
+    app.config["APP_LOGGER"] = logger
 
     app.register_blueprint(api_bp)
     app.teardown_appcontext(close_db)
@@ -40,4 +50,5 @@ def create_app() -> Flask:
 
 if __name__ == "__main__":
     flask_app = create_app()
+    flask_app.logger.info("Starting Food Finder web application.")
     flask_app.run(debug=True)

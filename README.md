@@ -26,3 +26,7 @@ La interfaz web permite:
 - Autocompletar el listado de restaurantes disponibles desde la colección `product_detail`.
 - Activar filtros opcionales de disponibilidad, restaurante y precio máximo (habilitando el slider).
 - Enviar una búsqueda semántica que consulta el índice vectorial y devuelve hasta 5 resultados relevantes.
+
+## Registro de operaciones
+- Cada script registra sus acciones en `logs/log-<timestamp>.log` (ruta configurable con `LOG_DIR`).
+- Encontrarás trazas para creación/eliminación de índices, generación de embeddings, transformaciones y consultas ejecutadas desde el backend Flask.

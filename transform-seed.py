@@ -6,6 +6,8 @@ from bson import ObjectId
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
+from utils.logger import get_logger
+
 
 def parse_args() -> argparse.Namespace:
     load_dotenv()
@@ -96,6 +98,8 @@ def main() -> None:
     args = parse_args()
     settings = load_settings()
 
+    logger = get_logger("transform")
+
     client = MongoClient(settings["mongo_uri"])
     try:
         db = client[settings["db_name"]]
@@ -104,7 +108,7 @@ def main() -> None:
 
         if args.drop_target:
             target_collection.drop()
-            print(f"[INFO] Dropped target collection '{args.target}'.")
+            logger.info("Dropped target collection '%s'.", args.target)
 
         cursor = source_collection.find({})
         if args.limit:
@@ -123,14 +127,25 @@ def main() -> None:
                 if len(batch) >= args.batch_size:
                     target_collection.insert_many(batch)
                     batch.clear()
-                    print(f"[INFO] Inserted {total_products} product documents so far...")
+                    logger.info(
+                        "Inserted %d product documents so far into '%s'.",
+                        total_products,
+                        args.target,
+                    )
 
         if batch:
             target_collection.insert_many(batch)
-            print(f"[INFO] Inserted remaining {len(batch)} product documents.")
+            logger.info(
+                "Inserted remaining %d product documents into '%s'.",
+                len(batch),
+                args.target,
+            )
 
-        print(
-            f"[DONE] Processed {total_documents} source documents and generated {total_products} product documents into '{args.target}'."
+        logger.info(
+            "Processed %d source documents and generated %d product documents into '%s'.",
+            total_documents,
+            total_products,
+            args.target,
         )
     finally:
         client.close()

@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 from voyageai import Client
 
+from utils.logger import get_logger
+
 
 def parse_args() -> argparse.Namespace:
     load_dotenv()
@@ -106,6 +108,8 @@ def main() -> None:
     args = parse_args()
     settings = load_settings()
 
+    logger = get_logger("embed")
+
     voyage_client = Client(api_key=settings["api_key"])
     mongo_client = MongoClient(settings["mongo_uri"])
 
@@ -117,19 +121,24 @@ def main() -> None:
 
         documents = collect_documents(cursor, args.skip_existing)
         if not documents:
-            print("[INFO] No product descriptions found to embed.")
+            logger.info("No product descriptions found to embed.")
             return
 
-        print(f"[INFO] Preparing to embed {len(documents)} product descriptions.")
+        logger.info(
+            "Preparing to embed %d product descriptions (batch size=%d, dry_run=%s).",
+            len(documents),
+            args.batch_size,
+            args.dry_run,
+        )
 
         processed = 0
         for batch in batched(documents, args.batch_size):
             ids = [doc["_id"] for doc, _ in batch]
             descriptions = [text for _, text in batch]
             if args.dry_run:
-                print(
-                    f"[DRY-RUN] Would embed and update documents: "
-                    f"{', '.join(str(_id) for _id in ids)}"
+                logger.info(
+                    "[DRY-RUN] Would embed and update documents: %s",
+                    ", ".join(str(_id) for _id in ids),
                 )
                 processed += len(batch)
                 continue
@@ -144,12 +153,14 @@ def main() -> None:
                 )
 
             processed += len(batch)
-            print(f"[OK] Embedded and updated {processed}/{len(documents)} documents.")
+            logger.info(
+                "Embedded and updated %d/%d documents.", processed, len(documents)
+            )
 
         if args.dry_run:
-            print(f"[DRY-RUN] Finished simulation for {processed} documents.")
+            logger.info("[DRY-RUN] Finished simulation for %d documents.", processed)
         else:
-            print(f"[DONE] Embedded descriptions for {processed} documents.")
+            logger.info("Embedded descriptions for %d documents.", processed)
     finally:
         mongo_client.close()
 
